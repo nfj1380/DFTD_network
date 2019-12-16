@@ -67,7 +67,16 @@ plot(spec$values, col="blue")
 FiedlerValue <- spec$values[length(spec$value)-1]
 #if  eigenvalue is greater than 0 graph is connected
 FiedlerVector <- spec$vectors[,length(spec$values)-1]
+FiedlerVectorA <- spec$vectors[,length(spec$values)-2]
 plot(FiedlerVector)
+
+combinedA <- as.data.frame(cbind(FiedlerVector,FiedlerVectorA))
+
+
+ggplot(combinedA, aes(FiedlerVector,FiedlerVectorA ))+
+  geom_point()+ 
+  geom_text(label=rownames(combined), size=3,nudge_x = 0.02)
+
 #what is cluster membership
 clust <- kmeans(FiedlerVector,2)
 clust[1]#cluster membership  across nodes
@@ -84,9 +93,22 @@ plot(spec1$values, col="blue")
 #take the second smallest eigenvalue
 FiedlerValue1 <- spec1$values[length(spec1$value)-1]
 FiedlerValue1 
+
 #if  eigenvalue is greater than 0 graph is connected
 FiedlerVector1 <- spec1$vectors[,length(spec1$values)-1]
-plot(FiedlerVector1)
+FiedlerVector1a <- spec1$vectors[,length(spec1$values)-2]
+
+row.names(combined) <- seq(1:27)
+
+combined <- as.data.frame(cbind(FiedlerVector1,FiedlerVector1a))
+
+
+ggplot(combined, aes(FiedlerVector1,FiedlerVector1a ))+
+  geom_point()+ 
+  geom_text(label=rownames(combined), size=3,nudge_x = 0.02)
+
+
+
 #what is cluster membership
 clust1 <- kmeans(FiedlerVector1,2)
 clust1[1]#cluster membership  across nodes
@@ -115,7 +137,7 @@ str(graph)
 
 
 # plots
-net <- graph_from_adjacency_matrix(graph$Adjacency, mode = "undirected", weighted = TRUE)
+net <- graph_from_adjacency_matrix(graph$Laplacian, mode = "undirected", weighted = TRUE)
 colors <- brewer.blues(100)
 c_scale <- colorRamp(colors)
 E(net)$color = apply(c_scale(abs(E(net)$weight) / max(abs(E(net)$weight))), 1,
