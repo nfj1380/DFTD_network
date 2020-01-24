@@ -18,7 +18,9 @@ gMating <- graph(edges=c(1,201,5, 1,19, 1,15, 1,21, 1,16, 1,23, 1,22, 1,8, 2,19,
                    14,20, 15,17, 15,18, 15,16, 15,20, 16,23, 17,23, 17,20, 17,26, 18,21, 18,19, 18,20, 19,20, 19,25,
                    19,23, 20,25, 20,23, 20,26, 20,22, 21,25, 22,23, 23,26, 26,27),  n=27, directed=F)
 
-plot(gMating)
+layout <- layout_nicely(gMating)
+
+plot(gMating, layout=layout)
 str(gMating)
 
 #Degree to compare to Hamede et al
@@ -34,7 +36,7 @@ ggplot(Mating.degrees, aes(x = Degree )) +
 
 
 gAfterMating <- graph(edges=c(1,2, 1,20, 1,10,1,8, 1,15, 1,7,  1,5, 1,23, 2,8, 2,12, 2,10, 2,15, 2,25, 3,9, 3,11, 
-                              3,19, 3,4, 3,14, 3,10, 3,8, 3,15, 4,25, 4,21, 4,22, 4,21, 4,18, 4,7, 4,24, 4,13, 4,19,
+                              3,19, 3,4, 3,14, 3,10, 3,8, 3,15, 4,25, 4,21, 4,22, 4,18, 4,7, 4,24, 4,13, 4,19,
                               5,23, 5,6, 5,20, 5,17, 6,17, 6,27,7,15, 7,12, 7,10, 8, 10, 8,13, 8,20, 8,15, 8,12, 8,18,
                               9,13, 9,25, 9,15, 9,14, 9,16, 10, 15, 10,20, 10,19, 10,13, 10,12, 10,14, 11,13, 11,14, 
                               12,23, 12,20, 12,22, 13,24, 13,14, 13,25, 13,18, 14,24, 14,23, 14,17, 14,22, 16,20, 16,25, 
@@ -72,14 +74,16 @@ plot(FiedlerVector)
 
 combinedA <- as.data.frame(cbind(FiedlerVector,FiedlerVectorA))
 
-
-ggplot(combinedA, aes(FiedlerVector,FiedlerVectorA ))+
-  geom_point()+ 
-  geom_text(label=rownames(combined), size=3,nudge_x = 0.02)
-
 #what is cluster membership
 clust <- kmeans(FiedlerVector,2)
 clust[1]#cluster membership  across nodes
+
+ggplot(combinedA, aes(FiedlerVector,FiedlerVectorA ))+
+  geom_point(aes(colour= factor(kmeans(combinedA, centers=3,nstart=999)$cluster)), size=3)+ 
+  geom_text(label=rownames(combinedA), size=3,nudge_x = 0.02)+
+  theme_bw()+
+  scale_colour_brewer('My groups', palette = 'Set2')
+
 
 #Mating season analysis
 
@@ -102,18 +106,67 @@ row.names(combined) <- seq(1:27)
 
 combined <- as.data.frame(cbind(FiedlerVector1,FiedlerVector1a))
 
-
-ggplot(combined, aes(FiedlerVector1,FiedlerVector1a ))+
-  geom_point()+ 
-  geom_text(label=rownames(combined), size=3,nudge_x = 0.02)
-
-
-
-#what is cluster membership
-clust1 <- kmeans(FiedlerVector1,2)
+clust1 <- kmeans(combined,2, nstart=999)
 clust1[1]#cluster membership  across nodes
 
+#what is cluster membership
+clust1 <- kmeans(combined,3, nstart=999)
+#3 looks right
 
+ggplot(combined, aes(FiedlerVector1,FiedlerVector1a ))+
+  geom_point(aes(colour= factor(kmeans(combined, centers=3,nstart=999)$cluster)), size=3)+ 
+  geom_text(label=rownames(combined), size=3,nudge_x = 0.02)+
+  theme_bw()+
+  scale_colour_brewer('My groups', palette = 'Set2')
+
+
+
+
+
+
+#--------------------------------------------------------------------
+#scg
+#--------------------------------------------------------------------
+
+## SCG of real-world network
+
+
+n <- vcount(gMating)
+#interv <- c(100,100,50,25,12,6,3,2,2)
+cg <- scg(gMating, ev= n-(1:2),nt=2, mtype="laplacian",
+          algo="exact_scg", epairs=TRUE) #ev gives eigenpairs to be oreserved. Dont get the algo bit. nt isn't clear either (number of groups)
+
+## are the eigenvalues well-preserved?
+gt <- cg$Xt # this is the spectral graph
+nt <- vcount(gt)
+Lt <- laplacian_matrix(gt)
+evalt <- eigen(Lt, only.values=TRUE)$values[nt-(1:2)]
+res <- cbind(cg$values, evalt)
+res <- round(res,5) #rounds number
+colnames(res) <- c("lambda_i","lambda_tilde_i")
+rownames(res) <- c("N-1","N-2")
+print(res)
+
+## use SCG to get the communities
+com <- scg(laplacian_matrix(gMating), ev=n-c(1,2), nt=2)$groups
+col <- rainbow(max(com))
+layout <- layout_nicely(gMating)
+
+#plot untransformed network with scg groups
+plot(gMating, layout=layout, vertex.size=3, vertex.color=col[com])
+
+## display the coarse-grained graph
+gt <- simplify(as.undirected(gt))
+#layout.cg <- layout_with_kk(gt) #The Kamada-Kawai layout algorithm
+com.cg <- scg(laplacian_matrix(gt), nt-c(1,2), 2)$groups
+vsize <- sqrt(as.vector(table(cg$groups)))
+#side by side
+op <- par(mfrow=c(1,2))
+plot(gMating, layout=layout, vertex.size=3, vertex.color=col[com])
+plot(gt, layout=layout, vertex.size=3, 
+     vertex.color=col[com.cg])
+par(op)
+#-------------------------
 
 #------------other code------------------------
 
